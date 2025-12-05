@@ -145,6 +145,7 @@ export const likeUnlikePost = async (req, res) => {
         type: "like",
       });
       await notification.save();
+      
       return res.status(200).json({ message: "Post is liked." });
     } else {
       await Post.updateOne({ _id: post._id }, { $pull: { likes: user._id } });

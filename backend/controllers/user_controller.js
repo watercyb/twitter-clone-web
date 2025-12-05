@@ -74,6 +74,14 @@ export const followUnfollowUser = async (req, res) => {
         { $addToSet: { followers: user._id } },
         { new: true }
       );
+
+      const notification = new Notification({
+        from: user._id,
+        to: targetId,
+        type: "follow",
+      });
+      await notification.save();
+
       return res.status(200).json({ message: "User followed successfully." });
     }
   } catch (error) {
