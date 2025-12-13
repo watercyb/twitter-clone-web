@@ -9,7 +9,7 @@ import LoginPage from "./pages/login/LoginPage";
 import SignUpPage from "./pages/signup/SignUpPage";
 import NotificationPage from "./pages/notification/NotificationPage";
 import ProfilePage from "./pages/profile/ProfilePage";
-import { Toaster } from "react-hot-toast";
+import toast, { Toaster } from "react-hot-toast";
 
 function App() {
   const { data: authUser, isLoading } = useQuery({
@@ -17,10 +17,13 @@ function App() {
     queryFn: async () => {
       try {
         const res = await axiosInstance.get("/auth/me");
-        console.log("authUser is here:", res.data);
-        return "res.data";
+        return res.data;
       } catch (error) {
-        throw new Error(error);
+        console.error("Error fetching auth user:", error.message);
+        toast.error(
+          "Failed to check authentication: " + error.message || " Unknown error"
+        );
+        return null;
       }
     },
     retry: false,

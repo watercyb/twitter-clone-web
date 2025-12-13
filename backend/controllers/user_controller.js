@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import User from "../models/user_model.js";
 import { v2 as cloudinary } from "cloudinary";
+import Notification from "../models/notification_model.js";
 
 export const getUserProfile = async (req, res) => {
   try {
@@ -22,12 +23,19 @@ export const getSuggestedUsers = async (req, res) => {
   try {
     const userId = req.user._id;
 
+    const usersFollowedByMe = await User.findById(userId).select("followings");
+
     const users = await User.aggregate([
       { $match: { _id: { $ne: userId } } },
       { $sample: { size: 10 } },
     ]);
 
-    return res.status(200).json(users);
+    const filteredUsers = users.filter((user) => !usersFollowedByMe.followings.includes(user._id));
+    const suggestedUsers = filteredUsers.slice(0, 4);
+
+    suggestedUsers.forEach((user) => (user.password = null));
+
+    return res.status(200).json(suggestedUsers);
   } catch (error) {
     console.log("Error in user_controller getSuggestedUsers: ", error.message);
     res.status(500).json({ error: "Internal Server Error" });

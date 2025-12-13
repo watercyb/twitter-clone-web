@@ -26,7 +26,7 @@ const LoginPage = () => {
         });
       } catch (error) {
         throw new Error(
-          error.response?.data?.error || "Failed to create account"
+          error.response?.data?.error || "Failed to login"
         );
       }
     },
