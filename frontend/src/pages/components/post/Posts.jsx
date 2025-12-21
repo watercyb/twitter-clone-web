@@ -32,7 +32,6 @@ const Posts = ({ feedType, username, userId }) => {
     queryFn: async () => {
       try {
         const res = await axiosInstance.get(POST_ENDPOINT);
-
         return res.data;
       } catch (error) {
         throw new Error(error.response?.data?.error || "Something went wrong");

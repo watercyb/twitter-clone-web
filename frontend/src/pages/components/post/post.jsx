@@ -6,35 +6,94 @@ import { FaTrash } from "react-icons/fa";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-
 import { formatPostDate } from "../../../utils/date";
 import LoadingSpinner from "../../../components/LoadingSpinner";
+import { toast } from "react-hot-toast";
+import { useMutation } from "@tanstack/react-query";
+import axiosInstance from "../../../utils/axios";
 
 const Post = ({ post }) => {
   const [comment, setComment] = useState("");
-
   const queryClient = useQueryClient();
   const authUser = queryClient.getQueryData(["authUser"]);
-
-
   const postOwner = post.user;
-
   const isMyPost = authUser._id === post.user._id;
-
   const formattedDate = formatPostDate(post.createdAt);
 
-  const isDeleting = false;
-  const isCommenting = false;
-  const isLiking = false;
-  const isLiked = false;
+  const isLiked = post.likes.includes(authUser._id);
 
-  const handleDeletePost = () => {};
+  const { mutate: deletePost, isPending: isDeleting } = useMutation({
+    mutationFn: async () => {
+      try {
+        await axiosInstance.delete(`/posts/${post._id}`);
+      } catch (error) {
+        throw new Error(error.response?.data?.error || "Something went wrong");
+      }
+    },
+    onSuccess: () => {
+      queryClient.setQueryData(["posts"], (old) => {
+        return old.filter((p) => p._id !== post._id);
+      });
+      toast.success("Post deleted successfully");
+    },
+  });
 
-  const handlePostComment = (e) => {
-    e.preventDefault();
-  };
+  const { mutate: commentPost, isPending: isCommenting } = useMutation({
+    mutationFn: async () => {
+      try {
+        await axiosInstance.post(`/posts/comment/${post._id}`, {
+          text: comment,
+        });
+      } catch (error) {
+        throw new Error(error.response?.data?.error || "Something went wrong");
+      }
+    },
+    onSuccess: () => {
+      toast.success("Comment posted successfully");
+      queryClient.setQueryData(["posts"], (old) => {
+        return old.map((p) => {
+          if (p._id === post._id) {
+            return {
+              ...p,
+              comments: [
+                ...p.comments,
+                { _id: Date.now(), text: comment, user: authUser },
+              ],
+            };
+          } else {
+            return p;
+          }
+        });
+      });
+      setComment("");
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
 
-  const handleLikePost = () => {};
+  const { mutate: likePost, isPending: isLiking } = useMutation({
+    mutationFn: async () => {
+      try {
+        const res = await axiosInstance.post(`/posts/like/${post._id}`);
+        return res.data;
+      } catch (error) {
+        throw new Error(error.response?.data?.error || "Something went wrong");
+      }
+    },
+    onSuccess: (updatedLikes) => {
+      queryClient.setQueryData(["posts"], (old) => {
+        return old.map((p) => {
+          if (p._id === post._id) p.likes = updatedLikes;
+          return p;
+        });
+      });
+      setComment("");
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
 
   return (
     <>
@@ -64,7 +123,7 @@ const Post = ({ post }) => {
                 {!isDeleting && (
                   <FaTrash
                     className="cursor-pointer hover:text-red-500"
-                    onClick={handleDeletePost}
+                    onClick={() => deletePost(post._id)}
                   />
                 )}
 
@@ -138,7 +197,10 @@ const Post = ({ post }) => {
                   </div>
                   <form
                     className="flex gap-2 items-center mt-4 border-t border-gray-600 pt-2"
-                    onSubmit={handlePostComment}
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      commentPost();
+                    }}
                   >
                     <textarea
                       className="textarea w-full p-1 rounded text-md resize-none border focus:outline-none  border-gray-800"
@@ -163,7 +225,7 @@ const Post = ({ post }) => {
               </div>
               <div
                 className="flex gap-1 items-center group cursor-pointer"
-                onClick={handleLikePost}
+                onClick={() => likePost()}
               >
                 {isLiking && <LoadingSpinner size="sm" />}
                 {!isLiked && !isLiking && (
