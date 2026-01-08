@@ -38,3 +38,21 @@ export const deleteNotifications = async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
+
+export const deleteNotification = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const notificationId = req.params.id;
+    await Notification.deleteOne({ _id: notificationId });
+
+    return res
+      .status(200)
+      .json({ message: "Notification deleted successfully." });
+  } catch (error) {
+    console.log(
+      "Error in notification_controller deleteNotification: ",
+      error.message
+    );
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
