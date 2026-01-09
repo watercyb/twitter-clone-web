@@ -2,6 +2,8 @@ import mongoose from "mongoose";
 import User from "../models/user_model.js";
 import { v2 as cloudinary } from "cloudinary";
 import Notification from "../models/notification_model.js";
+import Post from "../models/post_model.js";
+import bcrypt from "bcryptjs";
 
 export const getUserProfile = async (req, res) => {
   try {
@@ -9,8 +11,12 @@ export const getUserProfile = async (req, res) => {
     if (!username)
       return res.status(400).json({ error: "Username is required." });
 
-    const user = await User.findOne({ username }).select("-password");
+    const user = (await User.findOne({ username }).select("-password")).toObject();
     if (!user) return res.status(404).json({ error: "User not found." });
+
+    const postNumber = (await Post.find({ user: user._id })).length;
+
+    user["postNumber"] = postNumber;
 
     return res.status(200).json(user);
   } catch (error) {
@@ -30,7 +36,9 @@ export const getSuggestedUsers = async (req, res) => {
       { $sample: { size: 10 } },
     ]);
 
-    const filteredUsers = users.filter((user) => !usersFollowedByMe.followings.includes(user._id));
+    const filteredUsers = users.filter(
+      (user) => !usersFollowedByMe.followings.includes(user._id)
+    );
     const suggestedUsers = filteredUsers.slice(0, 4);
 
     suggestedUsers.forEach((user) => (user.password = null));
@@ -125,7 +133,7 @@ export const updateUser = async (req, res) => {
           error: "Please provide a different password.",
         });
 
-      if (!awaitbcrypt.compare(currentPassword, user.password))
+      if (!await bcrypt.compare(currentPassword, user.password))
         return res.status(400).json({
           error: "Current password is incorrect.",
         });
